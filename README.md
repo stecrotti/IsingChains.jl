@@ -26,7 +26,7 @@ Construct a `IsingChain` instance
 ```
 using IsingChains, Random
 
-N = 10000
+N = 100_000
 rng = MersenneTwister(0)
 J = 2.0*randn(rng, N-1)
 h = randn(rng, N)
