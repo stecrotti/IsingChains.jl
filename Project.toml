@@ -1,0 +1,13 @@
+name = "IsingChains"
+uuid = "23595922-d072-4483-840c-1c0c6941625f"
+authors = ["Stefano Crotti <stefano.crotti@polito.it> and contributors"]
+version = "0.1.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+julia = "1"
+
+[targets]
+test = ["Test"]
