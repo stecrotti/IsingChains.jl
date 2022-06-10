@@ -33,6 +33,8 @@ struct IsingChain{T,U}
     end
 end
 
+IsingChain(N::Int; T = Float64) = IsingChain(randn(T,N-1), randn(T,N), 1.0)
+
 function show(io::IO, x::IsingChain)
     @unpack J, h, β, l, r, F = x
     println(io, "IsingChain with N = $(nspins(x)) variables at temperature β = $β")
