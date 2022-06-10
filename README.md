@@ -51,7 +51,7 @@ prob = pdf(x, σ)
 m = site_magnetizations(x)
 
 # nearest-neighbor magnetizations <σᵢσᵢ₊₁>
-pneigs = neighbor_magnetizations(x)
+mneigs = neighbor_magnetizations(x)
 
 # energy expected value
 U = avg_energy(x)
