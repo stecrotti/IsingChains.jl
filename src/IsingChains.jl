@@ -30,7 +30,7 @@ struct IsingChain{T,U}
         r = accumulate_right(J, h, β)
         F = -1/β * logaddexp( β*(h[1] + r[2][:p]), β*(-h[1] + r[2][:m]) )
         U = eltype(l)
-        new{T,U}(J, h, β, l, r, F)
+        new{T,U}(J, h, β, F, l, r)
     end
 
 end
