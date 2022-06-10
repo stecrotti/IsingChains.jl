@@ -18,12 +18,13 @@ export IsingChain, nspins, normalization, energy, free_energy, pdf,
 include("accumulate.jl")
 
 struct IsingChain{T,U}
-    J :: Vector{T}
-    h :: Vector{T}
-    β :: T
-    l :: OffsetVector{U, Vector{U}}
-    r :: OffsetVector{U, Vector{U}}
-    F :: T
+    J :: Vector{T}      # couplings
+    h :: Vector{T}      # external fields
+    β :: T              # inverse temperature
+    F :: T              # free energy
+    l :: OffsetVector{U, Vector{U}}     # messages from the left
+    r :: OffsetVector{U, Vector{U}}     # messages from the right   
+
     function IsingChain(J::Vector{T}, h::Vector{T}, β::T) where T
         l = accumulate_left(J, h, β)
         r = accumulate_right(J, h, β)
@@ -31,6 +32,7 @@ struct IsingChain{T,U}
         U = eltype(l)
         new{T,U}(J, h, β, l, r, F)
     end
+
 end
 
 IsingChain(N::Int; T = Float64) = IsingChain(randn(T,N-1), randn(T,N), 1.0)
@@ -135,7 +137,7 @@ end
 # return a sample along with its log-probability
 function sample!(rng::AbstractRNG, σ, x::IsingChain)
     @unpack J, h, β, l, r, F = x
-    # sample first spin 
+    # sample σ₁ from its marginal 
     pplus = exp(β*( + h[1] + r[2][:p] + F))
     σ1 = sample_spin(rng, pplus)
     σ[1] = σ1
@@ -143,6 +145,7 @@ function sample!(rng::AbstractRNG, σ, x::IsingChain)
     u = h[1]*σ[1]
 
     for i in 2:lastindex(σ)
+        # sample σᵢ|σ₁,…,σᵢ₋₁
         pplus = exp(β*( u + h[i] + J[i-1]*σ[i-1] + r[i+1][:p] + F))
         σi = sample_spin(rng, pplus)
         σ[i] = σi
