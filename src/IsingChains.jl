@@ -1,6 +1,6 @@
 module IsingChains
 
-import Base: zero, convert
+import Base: zero, convert, show
 import LogExpFunctions: logaddexp
 import OffsetArrays: OffsetVector, fill
 import UnPack: @unpack
@@ -16,11 +16,6 @@ export IsingChain, nspins, normalization, energy, free_energy, pdf,
         sample!, sample
 
 include("accumulate.jl")
-
-N = 10
-J = randn(N-1)
-h = randn(N)
-β = 3.0
 
 struct IsingChain{T,U}
     J :: Vector{T}
@@ -38,7 +33,10 @@ struct IsingChain{T,U}
     end
 end
 
-x = IsingChain(J, h, β)
+function show(io::IO, x::IsingChain)
+    @unpack J, h, β, l, r, F = x
+    println(io, "IsingChain with N = $(nspins(x)) variables at temperature β = $β")
+end
 
 nspins(x::IsingChain) = length(x.h)
 
@@ -127,41 +125,34 @@ end
 entropy(x::IsingChain; kw...) = x.β * (avg_energy(x; kw...) - free_energy(x)) 
 
 function sample_spin(rng::AbstractRNG, pplus::Real)
-    @assert 0 ≤ pplus ≤ 1
+    @assert 0 ≤ pplus ≤ 1 "$pplus"
     r = rand(rng)
     r < pplus ? 1 : -1
 end
 
-# return a sample along with its probability
+# return a sample along with its log-probability
 function sample!(rng::AbstractRNG, σ, x::IsingChain)
     @unpack J, h, β, l, r, F = x
     # sample first spin 
-    pplus = exp(β*( + h[1] + r[2][:p] ))
-    pminus = exp(β*( - h[1] - r[2][:m] ))
-    p1_plus = pplus / (pplus + pminus)
-    σ1 = sample_spin(rng, p1_plus)
+    pplus = exp(β*( + h[1] + r[2][:p] + F))
+    σ1 = sample_spin(rng, pplus)
     σ[1] = σ1
     # `u` accumulates the energy contribution of already extracted spins
     u = h[1]*σ[1]
 
     for i in 2:lastindex(σ)
-        pplus = exp(β*( u + h[i] + J[i-1]*σ[i-1] + r[i+1][:p] ))
-        pminus = exp(β*( u - h[i] - J[i-1]*σ[i-1] + r[i+1][:m] ))
-        pi_plus = pplus / (pplus + pminus)
-        σi = sample_spin(rng, pi_plus)
+        pplus = exp(β*( u + h[i] + J[i-1]*σ[i-1] + r[i+1][:p] + F))
+        σi = sample_spin(rng, pplus)
         σ[i] = σi
         u += h[i]*σ[i] + J[i-1]*σ[i-1]*σi
     end
 
-    p = exp(β*( u + F ))
-    @assert p ≈ pdf(x, σ)
-    σ, p
+    logp = β*( u + F )
+    @assert exp(logp) ≈ pdf(x, σ)
+    σ, logp
 end
 sample!(σ, x::IsingChain) = sample!(GLOBAL_RNG, σ, x)
 sample(rng::AbstractRNG, x::IsingChain) = sample!(rng, zeros(Int, nspins(x)), x)
 sample(x::IsingChain) = sample(GLOBAL_RNG, x)
-
-
-
 
 end # end module

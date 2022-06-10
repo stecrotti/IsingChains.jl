@@ -50,29 +50,6 @@ end
     end
 end
 
-# @testset "pair magnetizations" begin
-#     p = pair_magnetizations(x)
-#     _pair_magnetiz = [Obs((x, s) -> pdf(x, s)*s[i]*s[j]) 
-#                                         for i in 1:nspins(x) for j in 1:nspins(x)]
-#     pair_magnetiz_bruteforce = observables_bruteforce(x, _pair_magnetiz)
-#     @test all(Iterators.product(1:nspins(x),1:nspins(x))) do (i,j) 
-#         k = Int( (j-1)*N + i )
-#         p[i,j] ≈ pair_magnetiz_bruteforce[k]
-#     end
-# end
-
-# @testset "correlations" begin
-#     m = site_magnetizations(x)
-#     c = correlations(x)
-#     _correl = [Obs((x, s) -> pdf(x, s)*(s[i]*s[j]-m[i]*m[j])) 
-#                                         for i in 1:x.N for j in 1:x.N]
-#     correl_bruteforce = observables_bruteforce(x, _correl)
-#     @test all(Iterators.product(1:x.N,1:x.N)) do (i,j) 
-#         k = Int( (j-1)*N + i )
-#         isapprox( c[i,j], correl_bruteforce[k], atol=1e-4 )
-#     end
-# end
-
 @testset "average energy" begin
     U = avg_energy(x)
     _energy = Obs((x,s) -> pdf(x,s)*energy(x,s))
