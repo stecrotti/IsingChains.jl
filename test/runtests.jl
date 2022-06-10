@@ -1,6 +1,5 @@
 using IsingChains
 using Test
 
-@testset "IsingChains.jl" begin
-    # Write your tests here.
-end
+include("observables.jl")
+include("sampling.jl")
