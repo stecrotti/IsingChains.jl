@@ -28,7 +28,7 @@ x = IsingChain(J, h, β)
 @testset "normalization" begin
     _normaliz = (x, s) -> exp(-x.β*energy(x, s))
     Z_bruteforce = observables_bruteforce(x, [Obs(_normaliz)])[1]
-    @test x.F ≈ -1/β*log(Z_bruteforce)
+    @test free_energy(x) ≈ -1/β*log(Z_bruteforce)
 end
 
 @testset "magnetizations" begin

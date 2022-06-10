@@ -39,3 +39,9 @@ function accumulate_right(J::Vector{T}, h::Vector{T}, β::T) where T
     r = fill(zero(Bin{T}), 2:length(h)+1)
     accumulate_right!(r, J, h, β)
 end
+
+function accumulate_all!(l, r, J, h, β)
+    accumulate_left!(l, J, h, β)
+    accumulate_right!(r, J, h, β)
+    return nothing
+end
