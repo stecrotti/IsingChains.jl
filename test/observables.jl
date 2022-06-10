@@ -29,6 +29,7 @@ x = IsingChain(J, h, β)
     _normaliz = (x, s) -> exp(-x.β*energy(x, s))
     Z_bruteforce = observables_bruteforce(x, [Obs(_normaliz)])[1]
     @test free_energy(x) ≈ -1/β*log(Z_bruteforce)
+    @test normalization(x) ≈ Z_bruteforce
 end
 
 @testset "magnetizations" begin
@@ -37,6 +38,16 @@ end
     magnetiz_bruteforce = observables_bruteforce(x, _magnetiz)
     @test all(1:nspins(x)) do i 
         m[i] ≈ magnetiz_bruteforce[i]
+    end
+end
+
+@testset "marginals" begin
+    m = reduce(vcat, collect.(site_marginals(x)))
+    _marg = [Obs((x, s) -> pdf(x, s)*(s[i]==a)) 
+            for i in 1:nspins(x) for a in (1,-1)]
+    marg_bruteforce = observables_bruteforce(x, _marg)
+    @test all(1:2N) do i 
+        m[i] ≈ marg_bruteforce[i]
     end
 end
 

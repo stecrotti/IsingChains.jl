@@ -10,7 +10,6 @@ zero(::Bin2{T}) where T = Bin2{T}((zero(T),zero(T),zero(T),zero(T)))
 zero(::Type{Bin2{T}}) where T = Bin2{T}((zero(T),zero(T),zero(T),zero(T)))
 convert(::Type{Bin2{T}}, t::Tuple{T,T,T,T}) where T = Bin2{T}(t)
 
-normalize(t::Bin{T}) where T = Bin{T}(( t[:p] / sum(t), t[:m] / sum(t) ))
 magnetization(t::Bin) = (t[:p] - t[:m]) / sum(t)
 magnetization(t::Bin2) = (t[:pp] + t[:mm]- t[:pm] - t[:mp]) / sum(t)
 
