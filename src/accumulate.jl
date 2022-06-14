@@ -10,6 +10,7 @@ zero(::Bin2{T}) where T = Bin2{T}((zero(T),zero(T),zero(T),zero(T)))
 zero(::Type{Bin2{T}}) where T = Bin2{T}((zero(T),zero(T),zero(T),zero(T)))
 convert(::Type{Bin2{T}}, t::Tuple{T,T,T,T}) where T = Bin2{T}(t)
 
+# convert from (1- or 2-) spin distribution to (1- or 2-site) magnetization
 magnetization(t::Bin) = (t[:p] - t[:m]) / sum(t)
 magnetization(t::Bin2) = (t[:pp] + t[:mm]- t[:pm] - t[:mp]) / sum(t)
 
@@ -43,4 +44,25 @@ function accumulate_all!(l, r, J, h, β)
     accumulate_left!(l, J, h, β)
     accumulate_right!(r, J, h, β)
     return nothing
+end
+
+function accumulate_middle!(m::Matrix{Bin2{T}}, J::Vector{T}, h::Vector{T}, 
+        β::T) where T
+    N = length(h)
+    for i in 1:N-1
+        JJ = J[i]
+        m[i,i+1] = ( JJ, -JJ, -JJ, JJ)
+        for j in i+2:N
+            m[i,j] = (1/β*logaddexp(β*(+h[j-1]+J[j-1]+m[i,j-1][:pp]), β*(-h[j-1]-J[j-1]+m[i,j-1][:pm])),  # pp
+                      1/β*logaddexp(β*(+h[j-1]-J[j-1]+m[i,j-1][:pp]), β*(-h[j-1]+J[j-1]+m[i,j-1][:pm])),  # pm
+                      1/β*logaddexp(β*(+h[j-1]+J[j-1]+m[i,j-1][:mp]), β*(-h[j-1]-J[j-1]+m[i,j-1][:mm])),  # mp
+                      1/β*logaddexp(β*(+h[j-1]-J[j-1]+m[i,j-1][:mp]), β*(-h[j-1]+J[j-1]+m[i,j-1][:mm])))  # mm
+        end
+    end
+    m
+end
+function accumulate_middle(J::Vector{T}, h::Vector{T}, β::T) where T
+    N = length(h)
+    m = [zero(Bin2{T}) for i in 1:N, j in 1:N]
+    accumulate_middle!(m, J, h, β)
 end
