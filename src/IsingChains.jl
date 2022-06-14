@@ -1,6 +1,6 @@
 module IsingChains
 
-import Base: zero, convert, show
+import Base: zero, one, convert, show
 import LogExpFunctions: logaddexp
 import OffsetArrays: OffsetVector, fill
 import UnPack: @unpack
@@ -8,12 +8,15 @@ import LinearAlgebra: dot
 import StatsBase: sample
 import Random: AbstractRNG, GLOBAL_RNG
 
-export IsingChain, accumulate_all!, nspins, normalization, energy, free_energy, pdf,
-        site_marginals!, site_marginals, site_magnetizations!, site_magnetizations,
+export IsingChain, accumulate_all!, nspins, 
+        normalization, energy, free_energy, pdf,
+        site_marginals!, site_marginals, site_magnetizations, 
         neighbor_marginals!, neighbor_marginals, 
-        neighbor_magnetizations!, neighbor_magnetizations,
+        neighbor_magnetizations,
+        pair_marginals!, pair_marginals, pair_magnetizations,
         avg_energy, entropy,
-        sample!, sample
+        sample!, sample,
+        accumulate_middle
 
 include("accumulate.jl")
 
@@ -21,8 +24,8 @@ struct IsingChain{T,U}
     J :: Vector{T}      # couplings
     h :: Vector{T}      # external fields
     β :: T              # inverse temperature
-    l :: OffsetVector{U, Vector{U}}     # messages from the left
-    r :: OffsetVector{U, Vector{U}}     # messages from the right   
+    l :: OffsetVector{U, Vector{U}}     # pre-computed messages from the left
+    r :: OffsetVector{U, Vector{U}}     # pre-computed messages from the right   
 
     function IsingChain(J::Vector{T}, h::Vector{T}, β::T) where T
         l = accumulate_left(J, h, β)
@@ -51,7 +54,6 @@ end
 
 normalization(x::IsingChain) = exp(-x.β * free_energy(x))
 
-
 function energy(x::IsingChain, σ)
     @unpack J, h, β, l, r = x
     e_fields = - dot(h, σ)
@@ -78,19 +80,8 @@ function site_marginals(x::IsingChain{T,U}) where {T,U}
     site_marginals!(m, x)
 end
 
-function site_magnetizations!(m::Vector{T}, x::IsingChain) where {T<:Real}
-    @unpack J, h, β, l, r = x
-    F = free_energy(x)
-    for i in eachindex(m)
-        p_i = Bin{T}(( exp( β*(l[i-1][:p] + h[i] + r[i+1][:p] + F )),
-                       exp( β*(l[i-1][:m] - h[i] + r[i+1][:m] + F )) ))
-        m[i] = magnetization(p_i)
-    end
-    m
-end
-function site_magnetizations(x::IsingChain{T,U}) where {T,U}
-    m = zeros(T, nspins(x))
-    site_magnetizations!(m, x)
+function site_magnetizations(x::IsingChain; m = site_marginals(x))
+    return magnetization.(m)
 end
 
 function neighbor_marginals!(p::Vector{Bin2{T}}, x::IsingChain) where T
@@ -109,21 +100,42 @@ function neighbor_marginals(x::IsingChain{T,U}) where {T,U}
     neighbor_marginals!(p, x)
 end
 
-function neighbor_magnetizations!(p::Vector{T}, x::IsingChain) where {T<:Real}
+function neighbor_magnetizations(x::IsingChain; p = neighbor_marginals(x))
+    return magnetization.(p)
+end
+
+function pair_marginals!(p::Matrix{Bin2{T}}, x::IsingChain;
+        m = accumulate_middle(x.J, x.h, x.β)) where T
     @unpack J, h, β, l, r = x
     F = free_energy(x)
-    for i in eachindex(p)
-        p_i = Bin2{T}(( exp( β*(l[i-1][:p] + h[i] + J[i] + h[i+1] + r[i+2][:p] + F )),     # pp 
-                        exp( β*(l[i-1][:p] + h[i] - J[i] - h[i+1] + r[i+2][:m] + F )),     # pm
-                        exp( β*(l[i-1][:m] - h[i] - J[i] + h[i+1] + r[i+2][:p] + F )),     # mp 
-                        exp( β*(l[i-1][:m] - h[i] + J[i] - h[i+1] + r[i+2][:m] + F )) ))
-        p[i] = magnetization(p_i)
+    N = nspins(x)
+    for i in 1:N
+        p[i,i] = ( exp( β*(l[i-1][:p] + h[i] + r[i+1][:p] + F )), zero(T),
+                   exp( β*(l[i-1][:m] - h[i] + r[i+1][:m] + F )), zero(T) )
+        for j in i+1:N
+            pij = ( exp(β*(l[i-1][:p]+h[i]+m[i,j][:pp]+h[j]+r[j+1][:p] + F)),    # pp
+                    exp(β*(l[i-1][:p]+h[i]+m[i,j][:pm]-h[j]+r[j+1][:m] + F)),    # pm
+                    exp(β*(l[i-1][:m]-h[i]+m[i,j][:mp]+h[j]+r[j+1][:p] + F)),    # mp
+                    exp(β*(l[i-1][:m]-h[i]+m[i,j][:mm]-h[j]+r[j+1][:m] + F)) )   # mm
+            p[j,i] = p[i,j] = pij
+        end
     end
     p
 end
-function neighbor_magnetizations(x::IsingChain{T,U}) where {T,U}
-    p = zeros(T, nspins(x)-1)
-    neighbor_magnetizations!(p, x)
+function pair_marginals(x::IsingChain{T,U};
+        m = accumulate_middle(x.J, x.h, x.β)) where {T,U}
+    N = nspins(x)
+    p = zeros(Bin2{T}, N, N)
+    pair_marginals!(p, x; m=m)
+end
+
+function pair_magnetizations(x::IsingChain; 
+        m = accumulate_middle(x.J, x.h, x.β), pmarg = pair_marginals(x; m=m))
+    pmag = magnetization.(pmarg)
+    for i in 1:nspins(x)
+        pmag[i,i] = 1
+    end
+    return pmag
 end
 
 function avg_energy(x::IsingChain; m = site_magnetizations(x),

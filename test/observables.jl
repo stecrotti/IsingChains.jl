@@ -61,6 +61,17 @@ end
     end
 end
 
+@testset "pair magnetizations" begin
+    p = pair_magnetizations(x)
+    _pair_magnetiz = [Obs((x, s) -> pdf(x, s)*s[i]*s[j]) 
+                                        for i in 1:N for j in 1:N]
+    pair_magnetiz_bruteforce = observables_bruteforce(x, _pair_magnetiz)
+    @test all(Iterators.product(1:N,1:N)) do (i,j) 
+        k = Int( (j-1)*N + i )
+        p[i,j] ≈ pair_magnetiz_bruteforce[k]
+    end
+end
+
 @testset "average energy" begin
     U = avg_energy(x)
     _energy = Obs((x,s) -> pdf(x,s)*energy(x,s))
