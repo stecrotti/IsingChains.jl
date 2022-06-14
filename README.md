@@ -20,7 +20,7 @@ is exactly solvable in polynomial time.
 
 ## Example
 ```
-]add IsingChains
+using Pkg; Pkg.add("https://github.com/stecrotti/IsingChains.jl.git")
 ```
 Construct a `IsingChain` instance
 ```
